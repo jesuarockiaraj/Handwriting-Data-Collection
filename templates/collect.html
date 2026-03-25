@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collect Handwriting - {{ emotion.capitalize() }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, {{ emotion_data.color }}, #764ba2);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .emotion-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .emotion-icon {
+            font-size: 80px;
+        }
+        
+        .emotion-name {
+            font-size: 36px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .prompt-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 5px solid {{ emotion_data.color }};
+        }
+        
+        .writing-area {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: crosshair;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .stats {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e9ecef;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emotion-header">
+            <div class="emotion-icon">{{ emotion_data.icon }}</div>
+            <div class="emotion-name">{{ emotion.capitalize() }}</div>
+        </div>
+        
+        <div class="prompt-box">
+            <strong>📝 Writing Prompt:</strong><br>
+            {{ emotion_data.prompt }}<br><br>
+            <strong>✍️ Sample Text:</strong><br>
+            "{{ emotion_data.text }}"
+        </div>
+        
+        <div class="writing-area">
+            <canvas id="canvas" width="800" height="400" style="width:100%; height:auto; max-width:800px; border:2px solid #ccc;"></canvas>
+            <div class="controls">
+                <button class="btn-secondary" onclick="clearCanvas()">🗑️ Clear</button>
+                <button class="btn-primary" onclick="saveAndContinue()">💾 Save & Continue</button>
+            </div>
+        </div>
+        
+        <div id="success-message" class="success-message"></div>
+        
+        <div class="stats" id="stats">
+            Loading statistics...
+        </div>
+    </div>
+    
+    <script>
+        let sessionId = new URLSearchParams(window.location.search).get('session_id');
+        let emotion = '{{ emotion }}';
+        let drawing = false;
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        
+        // Set up canvas
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
+        // Drawing events
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+        
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', startDrawingTouch);
+        canvas.addEventListener('touchmove', drawTouch);
+        canvas.addEventListener('touchend', stopDrawing);
+        
+        function startDrawing(e) {
+            drawing = true;
+            ctx.beginPath();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            ctx.moveTo(x, y);
+        }
+        
+        function draw(e) {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+        
+        function startDrawingTouch(e) {
+            e.preventDefault();
+            drawing = true;
+            ctx.beginPath();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const touch = e.touches[0];
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
+            ctx.moveTo(x, y);
+        }
+        
+        function drawTouch(e) {
+            e.preventDefault();
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const touch = e.touches[0];
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+        
+        function stopDrawing() {
+            drawing = false;
+        }
+        
+        function clearCanvas() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+        }
+        
+        function saveAndContinue() {
+            const dataURL = canvas.toDataURL('image/png');
+            const block = dataURL.split(';');
+            const contentType = block[0].split(':')[1];
+            const realData = block[1].split(',')[1];
+            
+            // Show loading
+            const saveBtn = document.querySelector('.btn-primary');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = 'Saving... <span class="loader"></span>';
+            saveBtn.disabled = true;
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: new URLSearchParams({
+                    'session_id': sessionId,
+                    'emotion': emotion,
+                    'image': realData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('success-message').innerHTML = 
+                        `✅ Sample saved successfully! Total collected: ${data.stats.total_samples}`;
+                    document.getElementById('success-message').style.display = 'block';
+                    
+                    // Clear canvas for next sample
+                    clearCanvas();
+                    
+                    // Update stats
+                    updateStats();
+                    
+                    // Auto-redirect after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error saving: ' + error);
+            })
+            .finally(() => {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            });
+        }
+        
+        function updateStats() {
+            fetch('/stats')
+                .then(response => response.json())
+                .then(stats => {
+                    const statsHtml = `
+                        <strong>📊 Collection Statistics</strong><br>
+                        Total Sessions: ${stats.total_sessions}<br>
+                        Total Samples: ${stats.total_samples}<br>
+                        Samples by Emotion:<br>
+                        ${Object.entries(stats.samples_by_emotion).map(([e, c]) => 
+                            `&nbsp;&nbsp;${e}: ${c}`
+                        ).join('<br>')}
+                    `;
+                    document.getElementById('stats').innerHTML = statsHtml;
+                });
+        }
+        
+        // Initial stats load
+        updateStats();
+    </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "36fa0f05": {
+    "session_id": "36fa0f05",
+    "participant_id": "00001",
+    "age": "27",
+    "gender": "M",
+    "handedness": "right",
+    "occupation": "student",
+    "timestamp": "2026-03-25T11:09:20.288867",
+    "samples": []
+  },
+  "8251a360": {
+    "session_id": "8251a360",
+    "participant_id": "00001",
+    "age": "27",
+    "gender": "M",
+    "handedness": "right",
+    "occupation": "student",
+    "timestamp": "2026-03-25T11:12:04.479334",
+    "samples": []
+  },
+  "db82a516": {
+    "session_id": "db82a516",
+    "participant_id": "00001",
+    "age": "26",
+    "gender": "M",
+    "handedness": "right",
+    "occupation": "teacher",
+    "timestamp": "2026-03-25T11:17:20.955144",
+    "samples": []
+  }
+}

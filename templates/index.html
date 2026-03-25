@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwriting Data Collection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .emotion-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .emotion-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .emotion-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .emotion-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .emotion-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✍️ Handwriting Data Collection</h1>
+        <p class="subtitle">Help us understand how emotions affect handwriting</p>
+        
+        <div id="participant-form">
+            <h2>Participant Information</h2>
+            <div class="form-group">
+                <label>Participant ID (e.g., P001)</label>
+                <input type="text" id="participant-id" placeholder="Enter a unique ID">
+            </div>
+            <div class="form-group">
+                <label>Age</label>
+                <input type="number" id="age" placeholder="Your age">
+            </div>
+            <div class="form-group">
+                <label>Gender</label>
+                <select id="gender">
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                    <option value="NB">Non-binary</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Handedness</label>
+                <select id="handedness">
+                    <option value="right">Right-handed</option>
+                    <option value="left">Left-handed</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Occupation</label>
+                <input type="text" id="occupation" placeholder="Student, Teacher, Engineer, etc.">
+            </div>
+            <button class="btn" onclick="startSession()">Start Collection</button>
+        </div>
+        
+        <div id="emotions-section" class="hidden">
+            <h2>Select an Emotion</h2>
+            <div class="emotion-grid" id="emotion-grid">
+                {% for emotion, data in emotions.items() %}
+                <div class="emotion-card" onclick="selectEmotion('{{ emotion }}')">
+                    <div class="emotion-icon">{{ data.icon }}</div>
+                    <div class="emotion-name">{{ emotion.capitalize() }}</div>
+                    <div style="font-size: 12px; color: #888;">{{ data.prompt[:50] }}...</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let sessionId = null;
+        
+        function startSession() {
+            const participantId = document.getElementById('participant-id').value;
+            const age = document.getElementById('age').value;
+            const gender = document.getElementById('gender').value;
+            const handedness = document.getElementById('handedness').value;
+            const occupation = document.getElementById('occupation').value;
+            
+            if (!participantId || !age) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            fetch('/start_session', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    participant_id: participantId,
+                    age: age,
+                    gender: gender,
+                    handedness: handedness,
+                    occupation: occupation
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                sessionId = data.session_id;
+                document.getElementById('participant-form').classList.add('hidden');
+                document.getElementById('emotions-section').classList.remove('hidden');
+            });
+        }
+        
+        function selectEmotion(emotion) {
+            window.location.href = `/collect/${emotion}?session_id=${sessionId}`;
+        }
+    </script>
+</body>
+</html>
